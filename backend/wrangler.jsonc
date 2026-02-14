@@ -6,6 +6,7 @@
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
+  // ,
   // "vars": {
   //   "MY_VAR": "my-variable"
   // },
