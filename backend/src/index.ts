@@ -1,32 +1,25 @@
 import { Hono } from 'hono'
 import { PrismaClient } from '@prisma/client/edge'
 import { withAccelerate } from '@prisma/extension-accelerate'
+import { blogRouter } from './routes/blog'
+
+
 //adding jwt
 import { decode, sign, verify } from 'hono/jwt'
-const app = new Hono()
+const app = new Hono<{
+  Bindings: {
+    JWT_SECRET: string,
+    ACC_DATABASE_URL: string
+  }
+}>()
+app.route('/api/v1/blog/*', blogRouter)
 
-app.use('api/v1/blog/*', async (c, next) => {
-  const body = await c.req.json()
-  const authorization = c.req.header('Authorization'.split(' ')[1]);
-  if(!authorization) {
-    c.status(403);
-    return c.json({ error: "Unauthorized" });
-  }
-  // @ts-expect-error
-  const response = await verify(authorization!, c.env.JWT_SECRET,'HS256');
-  if (!response) {
-    c.status(403);
-    return c.json({ error: "Unauthorized" });
-  }else{
-    c.set('userId', response.id)
-    await next()
-  }
-})
 
 //signin route
+
 app.post('/api/v1/user/signin', async (c) => {
 	const prisma = new PrismaClient({
-    // @ts-expect-error
+
 		accelerateUrl: c.env.ACC_DATABASE_URL,
 	}).$extends(withAccelerate());
 
@@ -34,15 +27,15 @@ app.post('/api/v1/user/signin', async (c) => {
 	const user = await prisma.user.findUnique({
 		where: {
 			email: body.email,
-      password: body.password
+      		password: body.password
 		}
 	});
 
 	if (!user) {
-		c.status(403);
+		c.status(403);//common status code for authentication failure
 		return c.json({ error: "user not found" });
 	}
-  // @ts-expect-error
+
 	const jwt = await sign({ id: user.id }, c.env.JWT_SECRET,'HS256');
 	return c.json({ jwt });
 })
@@ -51,7 +44,7 @@ app.post('/api/v1/user/signin', async (c) => {
 
 app.post('/api/v1/user/signup', async (c) => {
 	const prisma = new PrismaClient({
-    // @ts-expect-error
+
 		accelerateUrl: c.env.ACC_DATABASE_URL,
 	}).$extends(withAccelerate());
 
@@ -61,10 +54,9 @@ app.post('/api/v1/user/signup', async (c) => {
 			data: {
 				email: body.email,
 				password: body.password,
-        name: body.name
+        		name: body.name
 			}
 		});
-    // @ts-expect-error
 		const jwt = await sign({ id: user.id }, c.env.JWT_SECRET);
 		return c.json({ jwt });
 	}
@@ -74,21 +66,5 @@ app.post('/api/v1/user/signup', async (c) => {
 	}
 })
 
-
-
-app.post('/api/v1/blog', (c) => {
-  
-})
-
-app.put('/api/v1/blog', (c) => {
-  return c.text('Hello Hono!')
-})
-
-app.get('/api/v1/blog/:id', (c) => {
-  return c.text('Hello Hono!')
-})
-app.get('/api/v1/blog/bulk', (c) => {
-  return c.text('Hello Hono!')
-})
 
 export default app
