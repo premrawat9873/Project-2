@@ -8,18 +8,23 @@ const app = new Hono()
 app.use('api/v1/blog/*', async (c, next) => {
   const body = await c.req.json()
   const authorization = c.req.header('Authorization'.split(' ')[1]);
+  if(!authorization) {
+    c.status(403);
+    return c.json({ error: "Unauthorized" });
+  }
   // @ts-expect-error
   const response = await verify(authorization!, c.env.JWT_SECRET,'HS256');
   if (!response) {
     c.status(403);
     return c.json({ error: "Unauthorized" });
   }else{
+    c.set('userId', response.id)
     await next()
   }
 })
 
-
-app.post('/api/v1/signin', async (c) => {
+//signin route
+app.post('/api/v1/user/signin', async (c) => {
 	const prisma = new PrismaClient({
     // @ts-expect-error
 		accelerateUrl: c.env.ACC_DATABASE_URL,
@@ -28,7 +33,8 @@ app.post('/api/v1/signin', async (c) => {
 	const body = await c.req.json();
 	const user = await prisma.user.findUnique({
 		where: {
-			email: body.email
+			email: body.email,
+      password: body.password
 		}
 	});
 
@@ -41,7 +47,9 @@ app.post('/api/v1/signin', async (c) => {
 	return c.json({ jwt });
 })
 
-app.post('/api/v1/signup', async (c) => {
+//signup route
+
+app.post('/api/v1/user/signup', async (c) => {
 	const prisma = new PrismaClient({
     // @ts-expect-error
 		accelerateUrl: c.env.ACC_DATABASE_URL,
@@ -52,7 +60,8 @@ app.post('/api/v1/signup', async (c) => {
 		const user = await prisma.user.create({
 			data: {
 				email: body.email,
-				password: body.password
+				password: body.password,
+        name: body.name
 			}
 		});
     // @ts-expect-error
@@ -76,6 +85,9 @@ app.put('/api/v1/blog', (c) => {
 })
 
 app.get('/api/v1/blog/:id', (c) => {
+  return c.text('Hello Hono!')
+})
+app.get('/api/v1/blog/bulk', (c) => {
   return c.text('Hello Hono!')
 })
 
