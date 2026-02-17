@@ -16,7 +16,7 @@ export const blogRouter = new Hono<{
   }
 }>()
 
-blogRouter.use('/api/v1/blog/*', async (c, next) => {
+blogRouter.use('/*', async (c, next) => {
   const authorization = c.req.header('Authorization')?.split(' ')[1];
   if(!authorization) {
     c.status(403);
@@ -27,7 +27,7 @@ blogRouter.use('/api/v1/blog/*', async (c, next) => {
     c.status(403);
     return c.json({ error: "Unauthorized" });
   }else{
-    c.set('userId', response.id);
+    c.set("userId", String(response.id));
     await next()
   }
 })
@@ -35,6 +35,7 @@ blogRouter.use('/api/v1/blog/*', async (c, next) => {
 
 blogRouter.post('/create', async (c) => {
   const body = await c.req.json()
+  const authorId = c.get('userId');
   const prisma = new PrismaClient({
     accelerateUrl: c.env.ACC_DATABASE_URL,
   }).$extends(withAccelerate());
@@ -42,7 +43,7 @@ blogRouter.post('/create', async (c) => {
     data:{
         title: body.title,
         content: body.content,
-        authorId: "1"
+        authorId: authorId
     }
   })
   return c.json(blog.id)
